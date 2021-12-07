@@ -33,25 +33,40 @@ Game::Game(sf::RenderWindow *prmPtrGameWindow,ResourcesManager *prmPtrResoucesMa
 	ptrResoucesManager = prmPtrResoucesManager;																					//On enregistre le pointeur du gestionnaire des resources
 	ptrGameView = prmPtrGameView;																								//On enregistre le pointeur de la vie du joueur
 
+
+	/*THREAD*/
+	threadRunning = true;																										//On fait tourner le thread
+	ptrThreadPathFinding = new sf::Thread(std::bind(&ThreadPathFinder,&board,&threadOutputPath,&threadRunning));				//Creation du thread pour le pathfinding
+	ptrThreadPathFinding->launch();																								//On lance le thread
+	/*######*/
+
+	/*DIFFICULTY*/
 	gameClock.restart();																										//Redémarrage de l'horloge
 	gameMinutes = 0;																											//Score de 0
 	currentDifficulty = 0;																										//Difficulté actuel
+	/*##########*/
 
+	/*DEVICES*/
 	nbAvailableRouter = 0;																										//0 routeur disponible
 	nbAvailableSwitch = 0;																										//0 switch disponible
+	/*#######*/
 
+	/*MOUSE*/
 	mouseLeftClickHold = false;																									//Le clique de sourie n'est pas maintenue
 	mouseLeftClickUsedByOverMenu = false;																						//Le clique de sourie n'est pas utilisé par un menu superposant
 	mouseRightClickHold = false;																								//Le clique de sourie n'est pas maintenue
+	/*#####*/
 
+	/*MODE*/
 	destructionMode = DESTRUCTION_NONE;																							//Pas en mode destruction
 	selectedBuildWire = WIRE_NONE;																								//Pas de cable selectionné pour la construction
 	selectedBuildDevice = DEVICE_NONE;																							//Pas d'appareil selectionné pour la construction
+	/*####*/
 
 	for(y=0;y<BOARD_SIZE_Y;y++){																								//Pour chaque ligne du plateau
 		boardLine.clear();																											//On efface la ligne de génération
 		for(x=0;x<BOARD_SIZE_X;x++){																								//Pour chaque case de chaque ligne
-			boardLine.push_back(GameBlock(ptrGameWindow,x,y,&board,ptrResoucesManager,&dataList,&nbAvailableSwitch,&nbAvailableRouter));//On ajoute le block a la liste temporaire
+			boardLine.push_back(GameBlock(ptrGameWindow,x,y,&board,ptrResoucesManager,&dataList,&nbAvailableSwitch,&nbAvailableRouter,&threadOutputPath));//On ajoute le block a la liste temporaire
 		}
 		board.push_back(boardLine);																									//On ajoute la ligne au plateau
 	}
@@ -59,14 +74,10 @@ Game::Game(sf::RenderWindow *prmPtrGameWindow,ResourcesManager *prmPtrResoucesMa
 //Destructeur
 Game::~Game(){
 	//Variables
-	uint x,y;																										//Compteur de boucle
 	//Programme
-	for(y=0;y<board.size();y++){																					//Pour chaque colonne
-		for(x=0;x<board[0].size();x++){																					//Pour chaque ligne
-			board[x][y].StopThread();																						//Stop thread
-		}
-	}
-	dataList.clear();																								//On suppirme les donneés
+	threadRunning = false;																										//On arrete le thread
+	(*ptrThreadPathFinding).wait();																								//On attend que le thread s'arrete
+	dataList.clear();																											//On suppirme les donneés
 }
 /*####*/
 

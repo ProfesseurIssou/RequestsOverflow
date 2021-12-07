@@ -4,28 +4,27 @@
 
 /*FIND*/
 //Gestion du thread du pathfinding
-void ThreadPathFinder(std::vector<std::vector<GameBlock>> *prmPtrBoard,uint prmStartPosX,uint prmStartPosY,uint prmFindMode,std::vector<std::vector<int>> *prmPtrOutputPath,bool *prmThreadRunning,bool *prmPathLock){
+void ThreadPathFinder(std::vector<std::vector<GameBlock>> *prmPtrBoard,std::vector<StructPathFinding> *prmPtrOutput,bool *prmThreadRunning){
 	//Variables
+	uint i;																										//Compteur de boucle
 	std::vector<std::vector<int>> newPath;																		//Nouveau chemin trouvé
 	newPath.clear();																							//On vide la liste
 	//Programme
-	switch(prmFindMode){																						//Pour chaque mode de recherche
-		case FINDER_MODE_TO_SERVER:																					//Si on cherche vers le serveur
-			while(*prmThreadRunning){																					//Tant que le scan doit etre fait
-				newPath = FindPathToServer(prmPtrBoard,prmStartPosX,prmStartPosY);											//On recherche un nouveau chemin
-				(*prmPathLock) = true;																						//On bloque la lecture du path
-				(*prmPtrOutputPath) = newPath;																				//On ajoute le nouveau path
-				(*prmPathLock) = false;																						//On debloque la lecture du path
+	while(*prmThreadRunning){																					//Tant que le thread tourne
+		for(i=0;i<(*prmPtrOutput).size();i++){																		//Pour chaque calcul a fair
+			if(!(*prmThreadRunning))return;																				//Si on arrete le thread => on arrete la boucle tout de suite
+			switch((*prmPtrOutput)[i].findMode){																		//Pour chaque type de recherche
+				case FINDER_MODE_TO_SERVER:																					//Si on va vers le serveur
+					newPath = FindPathToServer(prmPtrBoard,(*prmPtrOutput)[i].posX,(*prmPtrOutput)[i].posY);					//On recherche un nouveau chemin
+					break;
+				case FINDER_MODE_TO_COMPUTER:																				//Si on va vers l'ordinateur
+					newPath = FindPathToComputer(prmPtrBoard,(*prmPtrOutput)[i].posX,(*prmPtrOutput)[i].posY);					//On recherche un nouveau chemin
+					break;
 			}
-			break;
-		case FINDER_MODE_TO_COMPUTER:																				//Si on cherche vers l'ordinateur
-			while(*prmThreadRunning){																					//Tant que le scan doit etre fait
-				newPath = FindPathToComputer(prmPtrBoard,prmStartPosX,prmStartPosY);										//On recherche un nouveau chemin
-				(*prmPathLock) = true;																						//On bloque la lecture du path
-				(*prmPtrOutputPath) = newPath;																				//On ajoute le nouveau path
-				(*prmPathLock) = false;																						//On debloque la lecture du path
-			}
-			break;
+			(*prmPtrOutput)[i].pathLock = true;																			//On bloque la lecture pendant l'ecriture
+			(*prmPtrOutput)[i].outputPath = newPath;																	//On ecrit le nouveau path
+			(*prmPtrOutput)[i].pathLock = false;																		//On debloque la lecture apres l'ecriture
+		}
 	}
 }
 //Cherche le chemin vers le serveur ([[]] => Aucun chemin trouvé // [[X,Y],[X2,Y2]] ou [[X,Y]] => Chemin trouvé)

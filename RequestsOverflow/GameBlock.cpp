@@ -2,7 +2,7 @@
 
 /*INIT*/
 //Constructeur
-GameBlock::GameBlock(sf::RenderWindow *prmPtrGameWindow,uint prmBoardPosX,uint prmBoardPosY,std::vector<std::vector<GameBlock>> *prmPtrBoard,ResourcesManager *prmPtrResourcesManager,std::vector<Data> *prmPtrDataList,uint *prmPtrNbAvailableSwitch,uint *prmPtrNbAvailableRouter){
+GameBlock::GameBlock(sf::RenderWindow *prmPtrGameWindow,uint prmBoardPosX,uint prmBoardPosY,std::vector<std::vector<GameBlock>> *prmPtrBoard,ResourcesManager *prmPtrResourcesManager,std::vector<Data> *prmPtrDataList,uint *prmPtrNbAvailableSwitch,uint *prmPtrNbAvailableRouter,std::vector<StructPathFinding> *prmptrThreadOutputPath){
 	//Variables
 	//Programme
 	ptrGameWindow = prmPtrGameWindow;																				//Pointeur de la fenetre de jeux
@@ -41,11 +41,10 @@ GameBlock::GameBlock(sf::RenderWindow *prmPtrGameWindow,uint prmBoardPosX,uint p
 	ptrNbAvailableSwitch = prmPtrNbAvailableSwitch;																	//Definition du pointeur
 	ptrNbAvailableRouter = prmPtrNbAvailableRouter;																	//Definition du pointeur
 
-	//Thread
-	ptrThreadPathFinding = NULL;																					//Pas de pathfinding
-	currentDataPath ={{}};																							//Pas de path
-	ThreadRunning = true;																							//On fait tourner le thread
-	pathLock = false;																								//Le thread n'ecrit pas
+	/*THREAD*/
+	ptrThreadOutputPath = prmptrThreadOutputPath;																	//Pointeur vers la sortie des path
+	threadListIndex = -1;																							//Index du block actuel dans la sortie du thread (-1 par defaut (car pas encore ajouté))
+	/*######*/
 }
 //Destructeur
 GameBlock::~GameBlock(){
@@ -205,8 +204,8 @@ bool GameBlock::Update(uint prmDifficulty,sf::Vector2f prmMousePos,bool prmMouse
 	//Generation des données
 	if(RandomFloat(0,1) < prmDifficulty*BLOCK_SPAWN_COEF && deviceType==DEVICE_COMPUTER)AddOneData();				//Si on doit ajouter une données => On ajoute une données
 	if(deviceType == DEVICE_COMPUTER && nbStoredData){																//Si la case est un ordiinateur ET qu'il y a des données stocké
-		while(pathLock){};																								//Tant que le path est bloquer => on attend
-		newPath = currentDataPath;																						//Recuperation du path actuellement calculé
+		while((*ptrThreadOutputPath)[threadListIndex].pathLock){};														//Tant que le path est bloquer => on attend
+		newPath = (*ptrThreadOutputPath)[threadListIndex].outputPath;													//Recuperation du path actuellement calculé
 		if(!newPath.empty()){																							//Si on a un PATH
 			(*ptrDataList).push_back(Data(ptrGameWindow,ptrBoard,ptrResoucesManager,boardPosX,boardPosY,DATA_TARGET_DB,newPath));//Creation d'une donnée avec le path
 			GetOneData();																									//On retire une données du stockage
@@ -514,8 +513,15 @@ void GameBlock::SetDevice(uint prmDeviceType){
 		SetWayDOWNLEFT(WIRE_NONE);																									//Pas de cable
 		SetWayLEFT(WIRE_NONE);																										//Pas de cable
 		SetWayLEFTUP(WIRE_NONE);																									//Pas de cable
-		ptrThreadPathFinding = new sf::Thread(std::bind(&ThreadPathFinder,ptrBoard,boardPosX,boardPosY,FINDER_MODE_TO_SERVER,&currentDataPath,&ThreadRunning,&pathLock));//Creation du thread pour le pathfinding
-		ptrThreadPathFinding->launch();																								//On lance le thread
+		if(threadListIndex==-1){																									//Si le calcul pour ce block n'est pas defini
+			threadListIndex = (*ptrThreadOutputPath).size();																			//On definie la position du block dans la recherche
+			StructPathFinding temp;																										//Instance de la case dans le pathfinder
+			temp.findMode = FINDER_MODE_TO_SERVER;																						//Definition du type de recherche
+			temp.posX = boardPosX;																										//Definition de la position de départ
+			temp.posY = boardPosY;																										//Definition de la position finale
+			temp.pathLock = false;																										//Pas de lock par defaut
+			(*ptrThreadOutputPath).push_back(temp);																						//Ajout de l'instance de recherche dans le pathfinder
+		}
 	}
 	if(deviceType==DEVICE_DB){																									//Si l'appareil est un serveur
 		SetWayUP(WIRE_NONE);																										//Pas de cable
@@ -526,8 +532,15 @@ void GameBlock::SetDevice(uint prmDeviceType){
 		SetWayDOWNLEFT(WIRE_NONE);																									//Pas de cable
 		SetWayLEFT(WIRE_NONE);																										//Pas de cable
 		SetWayLEFTUP(WIRE_NONE);																									//Pas de cable
-		ptrThreadPathFinding = new sf::Thread(std::bind(&ThreadPathFinder,ptrBoard,boardPosX,boardPosY,FINDER_MODE_TO_COMPUTER,&currentDataPath,&ThreadRunning,&pathLock));//Creation du thread pour le pathfinding
-		ptrThreadPathFinding->launch();																								//On lance le thread
+		if(threadListIndex==-1){																									//Si le calcul pour ce block n'est pas defini
+			threadListIndex = (*ptrThreadOutputPath).size();																			//On definie la position du block dans la recherche
+			StructPathFinding temp;																										//Instance de la case dans le pathfinder
+			temp.findMode = FINDER_MODE_TO_COMPUTER;																					//Definition du type de recherche
+			temp.posX = boardPosX;																										//Definition de la position de départ
+			temp.posY = boardPosY;																										//Definition de la position finale
+			temp.pathLock = false;																										//Pas de lock par defaut
+			(*ptrThreadOutputPath).push_back(temp);																						//Ajout de l'instance de recherche dans le pathfinder
+		}
 	}
 }
 //Ajouter une données dans le bloc
@@ -541,16 +554,6 @@ void GameBlock::GetOneData(){
 	//Variables
 	//Programme
 	nbStoredData--;																												//On retire une donnée
-}
-//On arrete le thread du pathfinding
-void GameBlock::StopThread(){
-	//Variables
-	//Programme
-	if(ptrThreadPathFinding){																						//Si le thread existe
-		ThreadRunning = false;																							//Le thread doivent s'arreter
-		ptrThreadPathFinding->wait();																					//On attend la fin du thread
-		delete ptrThreadPathFinding;																					//On supprime le thread
-	}
 }
 /*######*/
 

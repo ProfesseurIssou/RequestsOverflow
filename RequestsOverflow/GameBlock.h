@@ -56,7 +56,7 @@ typedef unsigned int uint;                                                      
 class GameBlock{
 	public:
 		/*INIT*/
-		GameBlock(sf::RenderWindow *prmPtrGameWindow,uint prmBoardPosX,uint prmBoardPosY,std::vector<std::vector<GameBlock>> *prmPtrBoard,ResourcesManager *prmPtrResourcesManager,std::vector<Data> *prmPtrDataList,uint *prmPtrNbAvailableSwitch,uint *prmPtrNbAvailableRouter);//Constructeur
+		GameBlock(sf::RenderWindow *prmPtrGameWindow,uint prmBoardPosX,uint prmBoardPosY,std::vector<std::vector<GameBlock>> *prmPtrBoard,ResourcesManager *prmPtrResourcesManager,std::vector<Data> *prmPtrDataList,uint *prmPtrNbAvailableSwitch,uint *prmPtrNbAvailableRouter,std::vector<StructPathFinding> *prmptrThreadOutputPath);//Constructeur
 		~GameBlock();																									//Destructeur
 		/*####*/
 
@@ -84,7 +84,6 @@ class GameBlock{
 		void SetDevice(uint prmDeviceType);																				//Definit le type d'appareil
 		void AddOneData();																								//Ajouter une données dans le bloc
 		void GetOneData();																								//Recupérer une données dans le bloc
-		void StopThread();																								//On arrete le thread du pathfinding
 		/*######*/
 
 		/*GETTER*/
@@ -138,9 +137,6 @@ class GameBlock{
 		bool wayLEFT;																									//Liaison vers gauche
 		bool wayLEFTUP;																									//Liaison vers gauche haut
 		uint nbConnectedCable;																							//Nombre de cable connecté
-
-		bool ThreadRunning;																								//Si le thread doit tourner
-		bool pathLock;																									//Si le thread (pathfinding) ecrit sur le path
 		/*######*/
 
 		/*VARIABLES*/
@@ -155,8 +151,9 @@ class GameBlock{
 		/*####*/
 
 		/*THREAD*/
+		std::vector<StructPathFinding> *ptrThreadOutputPath;															//Pointeur vers la sortie des path
 		std::vector<std::vector<int>> currentDataPath;																	//Chemin de données actuellement calculé par le thread
-		sf::Thread *ptrThreadPathFinding;																				//Thread de la recherche du chemin vers le serveurs
+		int threadListIndex;																							//Index du block actuel dans la sortie du thread
 		/*######*/
 
 		/*OTHER*/

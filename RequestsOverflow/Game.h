@@ -1,9 +1,11 @@
 #pragma once
+#include <SFML/System.hpp>																							//Thread
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <string>
 
 #include "config.h"
+#include "PathFinder.h"
 #include "ResourcesManager.h"				                                                                        //Gestion des resources
 #include "GameBlock.h"
 #include "Others.h"																									//RandUint
@@ -96,5 +98,11 @@ class Game{
 		bool AddRandomNewDevice(uint prmNbNewServer,uint prmNbNewComputer);													//Ajout de nouveau appareils aleatoirement sur la map
 		void AddAvailableDevice(uint prmNbSwitch,uint prmNbRouter);															//Ajout de nouveau appareils dans le stock
 		/*#####*/
+
+		/*THREAD*/
+		sf::Thread *ptrThreadPathFinding;																					//Thread de la recherche du chemin
+		bool threadRunning;																									//Si le thread doit tourner
+		std::vector<StructPathFinding> threadOutputPath;																	//Liste des path de sortie
+		/*######*/
 };
 
